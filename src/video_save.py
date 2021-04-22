@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import rospkg
-import ipfshttpclient
 import os
 import sys, time
 import numpy as np
