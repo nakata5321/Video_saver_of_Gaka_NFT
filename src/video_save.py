@@ -1,58 +1,88 @@
 #!/usr/bin/env python
-import rospkg
-import os
-import sys, time
-import numpy as np
-import cv2
-import rospy
-from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
+import pyrealsense2 as rs
+import numpy as np
+import rospkg
+import ffmpeg
+import rospy
+import cv2
 
 rospack = rospkg.RosPack()
 dirname = rospack.get_path("video_saver")
-FILE_OUTPUT = dirname + "/videos/" + "output.avi"
+FILE_OUTPUT = dirname + "/videos/" + "output.mp4"
+FFMPEG_BIN = "ffmpeg"
 
 # width of frame
 WIDTH = 1280
 # height of frame
 HEIGHT = 720
 # flag for start/stop recording
+global flag
 flag = ""
-# Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*"XVID")
-out = cv2.VideoWriter(FILE_OUTPUT, fourcc, 30.0, (WIDTH, HEIGHT))
 
+process2 = (
+    ffmpeg
+    .input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(WIDTH, HEIGHT))
+    .filter('fps', fps=30, round='up')
+    .output(FILE_OUTPUT, pix_fmt='yuv420p', vcodec='h264')
+    .overwrite_output()
+    .run_async(pipe_stdin=True)
+)
+
+
+def callback(ros_data):
+    global flag
+    flag = ros_data.data
+    rospy.loginfo(ros_data.data)
 
 def main():  # init ros node
     rospy.init_node("image_recorder", anonymous=True)
     rospy.loginfo("node is up")
 
-    def callback_video(ros_data):
-        #### direct conversion to CV2 ####
-        np_arr = np.fromstring(ros_data.data, np.uint8)
-        image_np = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        # Saves for video
-        out.write(image_np)
+    # create camera object and Configure streams
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.color, WIDTH, HEIGHT, rs.format.bgr8, 30)
 
-    def callback(ros_data):
-        if ros_data.data == "start":  # start recording
-            sub_video = rospy.Subscriber(
-                "/camera/color/image_raw/compressed",
-                CompressedImage,
-                callback_video,
-                queue_size=1,
-            )
-            rospy.loginfo(ros_data.data)
-        if ros_data.data == "stop":  # stop recording and release the video
-            rospy.loginfo(ros_data.data)
-            out.release()
-            cv2.destroyAllWindows()
-            rospy.signal_shutdown("done!")
+    # Start streaming
+    pipeline.start(config)
 
     # start-stop Subscriber
     ss_sub = rospy.Subscriber("/film", String, callback, queue_size=1)
-    rospy.spin()
+    try:
+        while True:
+            global flag
+            frames = pipeline.wait_for_frames()
+            color_frame = frames.get_color_frame()
+            if not color_frame:
+                continue
 
+            color_image = np.asanyarray(color_frame.get_data())
+
+            if flag == "start":
+                color_image = np.asanyarray(color_frame.get_data())
+
+                process2.stdin.write(
+                color_image[:,:,::-1]
+                .astype(np.uint8)
+                .tobytes()
+                )
+
+            if flag == "stop":
+                process2.stdin.close()
+                process2.wait()
+                rospy.loginfo("shutting down")
+
+                rospy.sleep(5)
+                rospy.signal_shutdown("done!")
+                break
+
+
+
+    finally:
+        # Stop streaming
+        pipeline.stop()
+        rospy.signal_shutdown("error!")
 
 if __name__ == "__main__":
     main()
