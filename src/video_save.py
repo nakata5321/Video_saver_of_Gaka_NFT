@@ -47,6 +47,12 @@ def main():  # init ros node
     # Start streaming
     pipeline.start(config)
 
+    #save first frame
+    frame = pipeline.wait_for_frames()
+    color_fram = frame.get_color_frame()
+    color_imag = np.asanyarray(color_fram.get_data())
+    cv2.imwrite(dirname + "/videos/pic.png", color_imag[:,:,:])
+
     # start-stop Subscriber
     ss_sub = rospy.Subscriber("/film", String, callback, queue_size=1)
     try:

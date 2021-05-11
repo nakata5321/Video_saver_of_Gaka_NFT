@@ -1,2 +1,6 @@
 #all videos
 videos/*.mp4
+
+#all photos
+videos/*.png
+videos/*.jpg
