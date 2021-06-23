@@ -37,7 +37,6 @@ def subprocess_create() -> object:
     process = ffmpeg.filter(process, "fps", fps=30, round="up")
     process = ffmpeg.output(process, FILE_OUTPUT, pix_fmt="yuv420p", vcodec="h264")
     process = ffmpeg.overwrite_output(process)
-    print("create")
     return process
 
 
@@ -68,7 +67,7 @@ def main() -> None:
             if not color_frame:
                 continue
 
-            if flag == "start":
+            if flag == "start":  # start filming a video
                 process = subprocess_create()
                 rospy.loginfo("start filming")
                 sub_process = ffmpeg.run_async(process, pipe_stdin=True)
@@ -76,7 +75,7 @@ def main() -> None:
                 flag = " "
                 filming = True
 
-            if flag == "stop":
+            if flag == "stop":  # stop filming a video
                 filming = False
                 sub_process.stdin.close()
                 sub_process.wait()

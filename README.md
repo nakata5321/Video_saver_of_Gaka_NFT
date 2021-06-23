@@ -1,12 +1,12 @@
-# ROS package for filming video from ROS realsense wrapper
+# ROS package for filming video with realsense camera
 
 ## requirements
  - RealSense camera D400 series.
  - RealSense SDK 2.0. Download and install [here][db1].
- - Python wrapper for RealSense 2.0. You can find it [here][db2].
+ - ROS. You can find it [here][db2].
 
 ## Start recording
-First of all, we need to roscore:
+First, we need to start `roscore`:
 ```
 roscore
 ```
@@ -25,10 +25,10 @@ To start recording manually, in new terminal publish _start_ :
 ```
 rostopic pub /film std_msgs/String "start"
 ```
-and to stop:
+To _stop_:
 ```
 rostopic pub /film std_msgs/String "stop"
 ```
 
 [db1]: <https://github.com/IntelRealSense/librealsense>
-[db2]: <https://github.com/IntelRealSense/librealsense/tree/master/wrappers/python#installation>
+[db2]: <https://www.ros.org/install/>
